@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/akyla-mcp)](https://pypi.org/project/akyla-mcp/)
 [![CI](https://github.com/AkilaAnalytics/akyla-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/AkilaAnalytics/akyla-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/pypi/l/akyla-mcp)](./LICENSE)
+[![smithery badge](https://smithery.ai/badge/brandon-7cji/akyla-financial-data)](https://smithery.ai/servers/brandon-7cji/akyla-financial-data)
 
 Give your AI **cited** financial data. This is a [Model Context Protocol](https://modelcontextprotocol.io)
 server for the [Akyla Financial Data API](https://akyla.ai/products/financial-data-api):
