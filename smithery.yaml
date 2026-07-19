@@ -1,18 +1,20 @@
-# Smithery hosting + registry config — https://smithery.ai
-# Lets Smithery host the remote server and pass each user's key as config.
+# Smithery deployment — container runtime (https://smithery.ai/docs/build/deployments)
+# Smithery builds the Dockerfile and hosts the server, serving MCP at /mcp on $PORT.
+# Each user's config (their Akyla key) is passed per session and read by the server
+# from the request query string (see _key_from_query in server.py).
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
 startCommand:
-  type: http
+  type: "http"
   configSchema:
-    type: object
+    type: "object"
     required: ["akylaApiKey"]
     properties:
       akylaApiKey:
-        type: string
-        title: Akyla API key
-        description: Free key from https://app.akyla.ai/developers
-  commandFunction: |-
-    (config) => ({
-      command: "akyla-mcp",
-      args: ["--transport", "http", "--port", String(process.env.PORT || 8000)],
-      env: { AKYLA_API_KEY: config.akylaApiKey }
-    })
+        type: "string"
+        title: "Akyla API key"
+        description: "Free key from https://app.akyla.ai/developers"
+  exampleConfig:
+    akylaApiKey: "ak_live_xxxxxxxxxxxxxxxx"

@@ -55,21 +55,51 @@ def _get_client() -> AkylaClient:
     return _client
 
 
+def _key_from_query() -> str | None:
+    """Read the key from the request query string — how Smithery (container runtime)
+    and many web clients pass per-session config to the /mcp endpoint. Accepts either
+    a named param or a base64-encoded `config` JSON blob."""
+    try:
+        from fastmcp.server.dependencies import get_http_request
+
+        params = get_http_request().query_params
+    except Exception:
+        return None
+    for name in ("akylaApiKey", "apiKey", "api_key", "AKYLA_API_KEY"):
+        if params.get(name):
+            return params[name]
+    blob = params.get("config")
+    if blob:
+        try:
+            import base64
+            import json
+
+            decoded = json.loads(base64.b64decode(blob + "=" * (-len(blob) % 4)))
+            for name in ("akylaApiKey", "apiKey", "api_key", "AKYLA_API_KEY"):
+                if decoded.get(name):
+                    return decoded[name]
+        except Exception:
+            pass
+    return None
+
+
 def _resolve_api_key() -> str | None:
-    """For HTTP/remote deployments, accept a per-request key from the inbound
-    Authorization: Bearer or X-Api-Key header. Returns None under stdio, where the
-    key comes from the environment via the client."""
+    """For HTTP/remote deployments, accept a per-request key. Order: Authorization
+    Bearer / X-Api-Key headers, then query-param config (Smithery, web clients).
+    Returns None under stdio, where the key comes from the environment via the client."""
     try:
         from fastmcp.server.dependencies import get_http_headers
 
         headers = get_http_headers() or {}
     except Exception:
-        return None
-    # get_http_headers lower-cases keys, but be defensive.
+        headers = {}
     auth = headers.get("authorization") or headers.get("Authorization")
     if auth and auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    return headers.get("x-api-key") or headers.get("X-Api-Key")
+    xkey = headers.get("x-api-key") or headers.get("X-Api-Key")
+    if xkey:
+        return xkey
+    return _key_from_query()
 
 
 # A conservative ticker whitelist. Real symbols are short and alphanumeric with
@@ -259,7 +289,8 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.transport == "http":
-        mcp.run(transport="http", host=args.host, port=args.port)
+        # Serve MCP at /mcp (what Smithery and remote clients expect).
+        mcp.run(transport="http", host=args.host, port=args.port, path="/mcp")
     else:
         mcp.run()  # stdio
 
