@@ -1,0 +1,18 @@
+# Smithery hosting + registry config — https://smithery.ai
+# Lets Smithery host the remote server and pass each user's key as config.
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required: ["akylaApiKey"]
+    properties:
+      akylaApiKey:
+        type: string
+        title: Akyla API key
+        description: Free key from https://app.akyla.ai/developers
+  commandFunction: |-
+    (config) => ({
+      command: "akyla-mcp",
+      args: ["--transport", "http", "--port", String(process.env.PORT || 8000)],
+      env: { AKYLA_API_KEY: config.akylaApiKey }
+    })

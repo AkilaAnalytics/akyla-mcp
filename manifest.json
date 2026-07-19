@@ -1,0 +1,31 @@
+{
+  "dxt_version": "0.1",
+  "name": "akyla-financial-data",
+  "display_name": "Akyla Financial Data",
+  "version": "0.1.0",
+  "description": "Cited SEC fundamentals, quotes, statements, comps & a US-equity screener — straight from primary filings.",
+  "long_description": "Pull as-reported US-equity fundamentals sourced directly from SEC inline-XBRL filings, live quotes, full financial statements, valuation comps, and screen ~5-8k US stocks. Statement values carry per-cell SEC filing provenance (accession number + XBRL fact id) so answers can be cited to the primary source. Powered by the Akyla Financial Data API.",
+  "author": { "name": "Akyla", "url": "https://akyla.ai" },
+  "homepage": "https://akyla.ai/products/financial-data-api",
+  "documentation": "https://app.akyla.ai/docs",
+  "license": "MIT",
+  "keywords": ["finance", "sec", "xbrl", "stocks", "financial-data", "screener"],
+  "server": {
+    "type": "python",
+    "entry_point": "src/akyla_mcp/server.py",
+    "mcp_config": {
+      "command": "akyla-mcp",
+      "args": [],
+      "env": { "AKYLA_API_KEY": "${user_config.akyla_api_key}" }
+    }
+  },
+  "user_config": {
+    "akyla_api_key": {
+      "type": "string",
+      "title": "Akyla API key",
+      "description": "Free key from https://app.akyla.ai/developers",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}
