@@ -48,6 +48,21 @@ async def test_bad_screener_filter_rejected():
             await client.call_tool("screen_equities", {"filters": {"marketCap_between": 5}})
 
 
+@pytest.mark.asyncio
+async def test_tools_marked_read_only():
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    for t in tools:
+        assert t.annotations is not None and t.annotations.readOnlyHint is True, t.name
+
+
+@pytest.mark.asyncio
+async def test_prompts_registered():
+    async with Client(mcp) as client:
+        names = {p.name for p in await client.list_prompts()}
+    assert {"stock_snapshot", "compare_peers", "cited_statement"} <= names
+
+
 @pytest.mark.parametrize("good", ["AAPL", "aapl", "BRK.B", "BF-B", "MSFT"])
 def test_valid_tickers(good):
     assert _norm_ticker(good) == good.upper()

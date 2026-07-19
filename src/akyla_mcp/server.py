@@ -128,8 +128,13 @@ async def _get(path: str, params: dict[str, Any] | None = None) -> Any:
 # Tools — one per documented endpoint.                                         #
 # --------------------------------------------------------------------------- #
 
+# Every tool is a read-only GET over the external Akyla API: no mutation, safe to
+# retry, and reaches out to the open world. These hints let clients/scanners treat
+# the tools as safe and cacheable.
+READONLY = {"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True}
 
-@mcp.tool()
+
+@mcp.tool(title="Latest Stock Quote", annotations=READONLY)
 async def get_quote(ticker: str, include_history: bool = False) -> dict:
     """Latest price snapshot and 52-week range for a US-listed stock.
 
@@ -141,7 +146,7 @@ async def get_quote(ticker: str, include_history: bool = False) -> dict:
     return await _get(f"/v1/quote/{_norm_ticker(ticker)}", params)
 
 
-@mcp.tool()
+@mcp.tool(title="Company Fundamentals", annotations=READONLY)
 async def get_fundamentals(ticker: str) -> dict:
     """Headline fundamentals for a US stock in one call: revenue, EBITDA, margins,
     EV/EBITDA, net debt and free cash flow, plus a live quote. Best first stop for
@@ -153,7 +158,7 @@ async def get_fundamentals(ticker: str) -> dict:
     return await _get(f"/v1/fundamentals/{_norm_ticker(ticker)}")
 
 
-@mcp.tool()
+@mcp.tool(title="Key Metrics History", annotations=READONLY)
 async def get_key_metrics(ticker: str) -> dict:
     """Full key-metrics table for a US stock across reporting periods (valuation,
     profitability, leverage, growth). Use when the user wants the detailed metric
@@ -165,7 +170,7 @@ async def get_key_metrics(ticker: str) -> dict:
     return await _get(f"/v1/metrics/{_norm_ticker(ticker)}")
 
 
-@mcp.tool()
+@mcp.tool(title="Financial Statement (SEC)", annotations=READONLY)
 async def get_statement(
     ticker: str,
     type: Literal["income", "balance", "cash"] = "income",
@@ -187,7 +192,7 @@ async def get_statement(
     return await _get(f"/v1/statements/{_norm_ticker(ticker)}", params)
 
 
-@mcp.tool()
+@mcp.tool(title="Filing Notes & Disclosures", annotations=READONLY)
 async def get_notes(
     ticker: str, period: Literal["annual", "quarterly"] = "annual"
 ) -> dict:
@@ -200,7 +205,7 @@ async def get_notes(
     return await _get(f"/v1/notes/{_norm_ticker(ticker)}", {"period": period})
 
 
-@mcp.tool()
+@mcp.tool(title="Comparable Companies", annotations=READONLY)
 async def get_comps(ticker: str) -> dict:
     """Comparable companies for a US stock: the subject company plus peers with
     valuation multiples, for relative-valuation questions ("how does <company>
@@ -212,7 +217,7 @@ async def get_comps(ticker: str) -> dict:
     return await _get(f"/v1/comps/{_norm_ticker(ticker)}")
 
 
-@mcp.tool()
+@mcp.tool(title="US Equity Screener", annotations=READONLY)
 async def screen_equities(
     filters: dict[str, float] | None = None,
     sector: str | None = None,
@@ -264,6 +269,39 @@ async def screen_equities(
             )
         params[key] = value
     return await _get("/v1/screener", params)
+
+
+# --------------------------------------------------------------------------- #
+# Prompts — ready-made workflows over the tools.                              #
+# --------------------------------------------------------------------------- #
+
+
+@mcp.prompt
+def stock_snapshot(ticker: str) -> str:
+    """A fast fundamental read on a US stock."""
+    return (
+        f"Use the Akyla tools to give a fundamental snapshot of {ticker}. Call "
+        f"get_fundamentals and get_quote, then summarize revenue, margins, EV/EBITDA, "
+        f"net debt and free cash flow, and say whether it looks cheap or expensive."
+    )
+
+
+@mcp.prompt
+def compare_peers(ticker: str) -> str:
+    """Relative-valuation read using comparable companies."""
+    return (
+        f"Use get_comps to pull {ticker} and its peers, then compare valuation multiples "
+        f"(P/E, EV/EBITDA, EV/Revenue) and say whether {ticker} is rich or cheap vs the group."
+    )
+
+
+@mcp.prompt
+def cited_statement(ticker: str, statement: str = "income") -> str:
+    """Pull a statement with per-cell SEC provenance and cite the figures."""
+    return (
+        f"Use get_statement for {ticker} with type='{statement}' and provenance enabled. "
+        f"Report the key line items and cite each number to its SEC filing (accession + fact id)."
+    )
 
 
 # --------------------------------------------------------------------------- #

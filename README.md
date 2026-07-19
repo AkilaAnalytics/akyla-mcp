@@ -1,5 +1,10 @@
 # Akyla Financial Data — MCP server
 
+[![PyPI](https://img.shields.io/pypi/v/akyla-mcp)](https://pypi.org/project/akyla-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/akyla-mcp)](https://pypi.org/project/akyla-mcp/)
+[![CI](https://github.com/AkilaAnalytics/akyla-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/AkilaAnalytics/akyla-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/pypi/l/akyla-mcp)](./LICENSE)
+
 Give your AI **cited** financial data. This is a [Model Context Protocol](https://modelcontextprotocol.io)
 server for the [Akyla Financial Data API](https://akyla.ai/products/financial-data-api):
 as-reported US-equity fundamentals sourced straight from **SEC inline-XBRL filings**,
@@ -24,6 +29,16 @@ that speaks MCP.
 | `get_notes` | Footnote disclosures from dimensional XBRL (annual/quarterly) |
 | `get_comps` | Subject company + peers with valuation multiples |
 | `screen_equities` | Filter ~5–8k US equities by valuation, size, growth, quality |
+
+## Prompts
+
+Ready-made workflows over the tools:
+
+| Prompt | What it does |
+|---|---|
+| `stock_snapshot` | Fast fundamental read — fundamentals + quote, summarized |
+| `compare_peers` | Relative valuation vs comparable companies |
+| `cited_statement` | Pull a statement with SEC provenance and cite every figure |
 
 ## Get a key
 
