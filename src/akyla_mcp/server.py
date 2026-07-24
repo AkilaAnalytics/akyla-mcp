@@ -200,20 +200,29 @@ async def get_statement(
     ticker: str,
     type: Literal["income", "balance", "cash"] = "income",
     provenance: bool = True,
+    period_type: Literal["annual", "quarterly", "all"] = "annual",
+    latest_n: int | None = 5,
 ) -> dict:
     """As-reported financial statement for a US stock, assembled straight from SEC
     inline-XBRL. With provenance on (default), every value carries its source — the
-    SEC accession number and inline-XBRL fact id — so you can CITE each number to
-    the primary filing. Use this when the user needs auditable figures.
+    SEC accession number, form, filing date, and inline-XBRL fact id where matchable
+    (derived values carry their two-term derivation instead) — so you can CITE each
+    number to the primary filing. Values are RAW currency units (see `units`).
+    Defaults return the latest 5 annual periods; widen period_type/latest_n only
+    when the question needs more history.
 
     Args:
         ticker: US stock symbol, e.g. AAPL.
         type: Which statement — "income", "balance" (balance sheet), or "cash" (cash flow).
         provenance: Attach per-cell SEC filing attribution to every value. Keep true for citeable answers.
+        period_type: "annual" (default), "quarterly", or "all" periods.
+        latest_n: Only the newest N periods (default 5). Pass null for the full history.
     """
-    params = {"type": type}
+    params: dict[str, str] = {"type": type, "period_type": period_type}
     if provenance:
         params["provenance"] = "1"
+    if latest_n is not None:
+        params["latest_n"] = str(latest_n)
     return await _get(f"/v1/statements/{_norm_ticker(ticker)}", params)
 
 
