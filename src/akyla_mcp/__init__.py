@@ -6,4 +6,4 @@ Cursor, Codex, Cline — can pull as-reported SEC fundamentals, quotes, statemen
 comps, and screen US equities, with per-cell filing provenance for cited answers.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.3.0"

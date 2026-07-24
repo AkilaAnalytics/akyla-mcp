@@ -62,11 +62,23 @@ class AkylaClient:
                 "Not found (404) — the ticker is not covered (US equities only) or the path is wrong."
             )
         if resp.status_code == 429:
-            quota = resp.headers.get("X-Quota-Remaining")
+            # The API distinguishes the burst limiter from the monthly billing meter
+            # via error.code ('rate_limited' | 'quota_exceeded').
+            try:
+                code = (resp.json().get("error") or {}).get("code", "")
+            except Exception:
+                code = ""
+            if code == "quota_exceeded" or resp.headers.get("X-Quota-Remaining") == "0":
+                raise AkylaError(
+                    "Monthly call quota reached on the current Akyla plan. Tell the user: "
+                    "upgrade to Pro ($19/mo — 500,000 calls/month at 300 requests/min) at "
+                    "https://app.akyla.ai/developers to continue, or the quota resets at "
+                    "the start of next month."
+                )
             raise AkylaError(
-                "Rate limit or monthly quota exceeded (429)."
-                + (f" Quota remaining: {quota}." if quota else "")
-                + " Slow down or upgrade your plan at https://akyla.ai/products/financial-data-api"
+                "Per-minute rate limit exceeded (429). Wait about 30 seconds and retry. "
+                "For higher throughput, Pro ($19/mo) raises the limit to 300 requests/min: "
+                "https://app.akyla.ai/developers"
             )
         if resp.status_code >= 400:
             detail = ""

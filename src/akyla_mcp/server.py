@@ -28,6 +28,7 @@ try:  # ToolError renders as a clean tool failure to the client
 except Exception:  # pragma: no cover - older/newer fastmcp
     ToolError = RuntimeError  # type: ignore[assignment,misc]
 
+from .auth import build_auth
 from .client import AkylaClient, AkylaError
 from .config import Settings
 
@@ -43,7 +44,8 @@ provenance when the user needs auditable, citeable figures tied to a specific SE
 filing. Data is US equities only.\
 """
 
-mcp = FastMCP("Akyla Financial Data", instructions=INSTRUCTIONS)
+# auth is None unless GOOGLE_CLIENT_ID/SECRET are set → key-only behaviour is unchanged.
+mcp = FastMCP("Akyla Financial Data", instructions=INSTRUCTIONS, auth=build_auth())
 
 _client: AkylaClient | None = None
 
@@ -117,9 +119,32 @@ def _norm_ticker(ticker: str) -> str:
     return clean
 
 
-async def _get(path: str, params: dict[str, Any] | None = None) -> Any:
+async def _resolve_oauth_key() -> str | None:
+    """When OAuth is active, derive the key from the authenticated identity: an Akyla key
+    presented as a bearer token, or a Google-verified email mapped to the user's key."""
     try:
-        return await _get_client().get(path, params=params, api_key=_resolve_api_key())
+        from fastmcp.server.dependencies import get_access_token
+
+        token = get_access_token()
+    except Exception:
+        return None
+    if not token:
+        return None
+    claims = getattr(token, "claims", None) or {}
+    if claims.get("akyla_api_key"):
+        return claims["akyla_api_key"]
+    email = claims.get("email")
+    if email:
+        from .akyla_db import key_for_email
+
+        return await key_for_email(email)
+    return None
+
+
+async def _get(path: str, params: dict[str, Any] | None = None) -> Any:
+    key = await _resolve_oauth_key() or _resolve_api_key()
+    try:
+        return await _get_client().get(path, params=params, api_key=key)
     except AkylaError as exc:
         raise ToolError(str(exc)) from exc
 
@@ -327,8 +352,15 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.transport == "http":
-        # Serve MCP at /mcp (what Smithery and remote clients expect).
-        mcp.run(transport="http", host=args.host, port=args.port, path="/mcp")
+        # Serve MCP at /mcp (what Smithery and remote clients expect). Wrap the app as the
+        # OUTERMOST ASGI layer so the query-key -> Authorization promotion happens before
+        # FastMCP's auth runs (so `?apiKey=` clients keep authenticating under OAuth).
+        import uvicorn
+
+        from .auth import QueryKeyMiddleware
+
+        app = QueryKeyMiddleware(mcp.http_app(path="/mcp"))
+        uvicorn.run(app, host=args.host, port=args.port)
     else:
         mcp.run()  # stdio
 

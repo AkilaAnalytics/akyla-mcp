@@ -63,6 +63,32 @@ async def test_prompts_registered():
     assert {"stock_snapshot", "compare_peers", "cited_statement"} <= names
 
 
+def test_key_from_query_string():
+    from akyla_mcp.auth import key_from_query_string
+
+    assert key_from_query_string(b"apiKey=ak_live_x") == "ak_live_x"
+    assert key_from_query_string(b"akylaApiKey=ak_live_y&z=1") == "ak_live_y"
+    assert key_from_query_string(b"foo=bar") is None
+
+
+@pytest.mark.asyncio
+async def test_akyla_key_verifier():
+    from akyla_mcp.auth import AkylaKeyVerifier
+
+    v = AkylaKeyVerifier()
+    tok = await v.verify_token("ak_live_z")
+    assert tok is not None and tok.claims["akyla_api_key"] == "ak_live_z"
+    assert await v.verify_token("eyJhbGciOi") is None  # a JWT falls through to Google
+
+
+def test_generate_key_format():
+    from akyla_mcp.akyla_db import _generate_key
+
+    plaintext, prefix, key_hash = _generate_key()
+    assert plaintext.startswith("ak_live_") and prefix.startswith("ak_live_")
+    assert len(key_hash) == 64 and plaintext.startswith(prefix)
+
+
 @pytest.mark.parametrize("good", ["AAPL", "aapl", "BRK.B", "BF-B", "MSFT"])
 def test_valid_tickers(good):
     assert _norm_ticker(good) == good.upper()
@@ -72,3 +98,56 @@ def test_valid_tickers(good):
 def test_path_traversal_and_junk_rejected(bad):
     with pytest.raises(ToolError):
         _norm_ticker(bad)
+
+
+def test_plan_for_account_mirrors_app():
+    from akyla_mcp.akyla_db import plan_for_account
+
+    assert plan_for_account("premium", []) == "pro"
+    assert plan_for_account("free", ["trading"]) == "pro"
+    assert plan_for_account("free", ["vpn"]) == "free"
+    assert plan_for_account("free", None) == "free"
+    assert plan_for_account(None, None) == "free"
+
+
+def _mock_client(handler):
+    import httpx
+
+    from akyla_mcp.client import AkylaClient
+    from akyla_mcp.config import Settings
+
+    c = AkylaClient(Settings(api_key=None, base_url="https://api.test", timeout=5))
+    c._client = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://api.test"
+    )
+    return c
+
+
+@pytest.mark.asyncio
+async def test_429_quota_exceeded_sells_upgrade():
+    import httpx
+
+    from akyla_mcp.client import AkylaError
+
+    def handler(request):
+        return httpx.Response(429, json={"error": {"code": "quota_exceeded"}})
+
+    c = _mock_client(handler)
+    with pytest.raises(AkylaError, match=r"\$19/mo"):
+        await c.get("/v1/quote/AAPL", api_key="ak_live_t")
+    await c.aclose()
+
+
+@pytest.mark.asyncio
+async def test_429_rate_limited_says_back_off():
+    import httpx
+
+    from akyla_mcp.client import AkylaError
+
+    def handler(request):
+        return httpx.Response(429, json={"error": {"code": "rate_limited"}})
+
+    c = _mock_client(handler)
+    with pytest.raises(AkylaError, match="Wait about 30 seconds"):
+        await c.get("/v1/quote/AAPL", api_key="ak_live_t")
+    await c.aclose()
