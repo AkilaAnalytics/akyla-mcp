@@ -1,6 +1,6 @@
 [project]
 name = "akyla-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "MCP server for the Akyla Financial Data API — cited SEC fundamentals, quotes, statements, comps & a US-equity screener, straight from primary filings."
 readme = "README.md"
 requires-python = ">=3.10"

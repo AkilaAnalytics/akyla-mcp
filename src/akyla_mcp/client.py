@@ -71,13 +71,13 @@ class AkylaClient:
             if code == "quota_exceeded" or resp.headers.get("X-Quota-Remaining") == "0":
                 raise AkylaError(
                     "Monthly call quota reached on the current Akyla plan. Tell the user: "
-                    "upgrade to Pro ($19/mo — 500,000 calls/month at 300 requests/min) at "
+                    "upgrade to Starter ($19/mo — 500,000 calls/month at 300 requests/min) at "
                     "https://app.akyla.ai/developers to continue, or the quota resets at "
                     "the start of next month."
                 )
             raise AkylaError(
                 "Per-minute rate limit exceeded (429). Wait about 30 seconds and retry. "
-                "For higher throughput, Pro ($19/mo) raises the limit to 300 requests/min: "
+                "For higher throughput, Starter ($19/mo) raises the limit to 300 requests/min: "
                 "https://app.akyla.ai/developers"
             )
         if resp.status_code >= 400:

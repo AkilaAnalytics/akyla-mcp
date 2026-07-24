@@ -359,7 +359,10 @@ def main() -> None:
 
         from .auth import QueryKeyMiddleware
 
-        app = QueryKeyMiddleware(mcp.http_app(path="/mcp"))
+        # stateless_http: every request is self-contained (no mcp-session-id
+        # required). ChatGPT's connector UI probes tools/list without a session —
+        # stateful mode 400s that probe and the plugin shows "No actions available".
+        app = QueryKeyMiddleware(mcp.http_app(path="/mcp", stateless_http=True))
         uvicorn.run(app, host=args.host, port=args.port)
     else:
         mcp.run()  # stdio
